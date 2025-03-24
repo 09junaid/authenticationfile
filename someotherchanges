@@ -1,0 +1,69 @@
+/* token in header */
+const jwt = require("jsonwebtoken");
+
+const ensureAuthenticate = (req, res, next) => {
+  const authHeader = req.headers["authorization"];
+
+  // ✅ Check if Authorization header is present and correctly formatted
+  if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    return res.status(401).json({ message: "Unauthorized! JWT token is required" });
+  }
+
+  // ✅ Extract token (Remove "Bearer " from header)
+  const token = authHeader.split(" ")[1];
+
+  try {
+    // ✅ Verify token using JWT secret key
+    const decodeData = jwt.verify(token, process.env.JWT_SECRET);
+    req.user = decodeData; // ✅ Store decoded user data in req.user
+    next(); // ✅ Allow access to protected routes
+  } catch (error) {
+    return res.status(401).json({ message: "Unauthorized! JWT token expired" });
+  }
+};
+
+module.exports = ensureAuthenticate;
+
+/token in cookies/
+const token = jwt.sign(
+      { id: userExist._id, role: userExist.role ,name:userExist.name,email:userExist.email}, // Payload
+      process.env.JWT_SECRET,
+      { expiresIn: "7d" }
+    );
+
+    // Set token as HTTP-only cookie
+    res.cookie("token", token, {
+     httpOnly: true, 
+     sameSite: 'None', 
+     secure: true 
+
+    });
+-------------
+const jwt = require("jsonwebtoken");
+
+const authMiddleware = (req, res, next) => {
+  const token = req.cookies.token;
+
+  if (!token) {
+    return res.status(401).json({ message: "No token, authorization denied" });
+  }
+
+  try {
+    const decode = jwt.verify(token, process.env.JWT_SECRET);
+    req.user = decode; // Assign decoded payload to req.user
+    next();
+  } catch (error) {
+    return res.status(401).json({ msg: "Token is not valid" });
+  }
+};
+
+const checkRole = (roles) => {
+  return (req, res, next) => {
+    if (!req.user || !roles.includes(req.user.role)) {
+      return res.status(403).json({ msg: "Access denied" });
+    }
+    next();
+  };
+};
+
+module.exports = { authMiddleware, checkRole };
